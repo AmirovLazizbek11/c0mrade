@@ -1,0 +1,46 @@
+# Compiled Agents
+*.exe
+Agent.exe
+win32.exe
+
+# Build artifacts
+*.o
+*.obj
+*.res
+resource.rc
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Virtual environments
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+temp_icon.ico
+*.tmp
+*.bak
+
+# Config files with sensitive data
+config.ini
+secrets.py
