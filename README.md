@@ -1,4 +1,4 @@
-# ☠️ C4MRADE — Advanced C2 Framework
+# ☠️ c0mrade — Advanced C2 Framework
 
 ![GitHub language](https://img.shields.io/badge/Version-2.5-00ff9d?style=for-the-badge&logo=hackthebox&logoColor=white)
 ![GitHub language](https://img.shields.io/badge/Platform-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)
@@ -33,7 +33,7 @@ encrypted communications, and a Cyberpunk-themed real-time web dashboard.
 
 ## 🎯 Overview
 
-**C4MRADE** is a full-stack offensive security framework engineered by **Amirov Lazizbek** for authorized red team operations and security research. It combines a stealthy C++ implant with a real-time Python C2 server, all managed through an immersive Cyberpunk-style web dashboard.
+**c0mrade** is a full-stack offensive security framework engineered by **Amirov Lazizbek** for authorized red team operations and security research. It combines a stealthy C++ implant with a real-time Python C2 server, all managed through an immersive Cyberpunk-style web dashboard.
 
 > ⚠️ **EDUCATIONAL & AUTHORIZED TESTING ONLY** — This tool is designed for controlled lab environments, CTF competitions, and professional penetration testing engagements.
 
@@ -75,7 +75,7 @@ encrypted communications, and a Cyberpunk-themed real-time web dashboard.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                       C4MRADE v2.5                             │
+│                       c0mrade v2.5                             │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
 │  ┌──────────┐    XOR+B64/TCP    ┌──────────────┐   Socket.IO  │
@@ -122,7 +122,7 @@ c0mrade/
 ├── 📂 include/
 │   └── common.h                 # Shared headers & config
 ├── 📂 templates/
-│   └── index.html               # C4MRADE Web Dashboard
+│   └── index.html               # c0mrade Web Dashboard
 └── 📄 README.md
 ```
 
@@ -283,7 +283,7 @@ This project demonstrates advanced concepts in:
 
 **Amirov Lazizbek**
 
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/)
+[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/Cyber_forcee)
 [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/AmirovLazizbek11)
 
 > ⚠️ **Use this knowledge to defend, not to attack.**
@@ -291,5 +291,5 @@ This project demonstrates advanced concepts in:
 ---
 
 <p align="center">
-© 2026 Amirov Lazizbek — C4MRADE Project
+© 2026 Amirov Lazizbek — c0mrade Project
 </p>
